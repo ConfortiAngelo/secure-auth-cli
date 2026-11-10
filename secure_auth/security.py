@@ -1,21 +1,30 @@
-import hashlib
-import os
-from storage import *
+"""Password hashing with Argon2id (argon2-cffi).
 
-"""Funcion que me genera un hash SHA256 añadiendo "salt" a una contraseña ingresada por el usuario o por la funcion passoword_generator"""
-def hash_password(password):
-    #me genera un salt aleatorio de 16 bytes    
-    salt = os.urandom(16)
-    #le agregi mi salt a la contraseña y le hago el SHA-256
-    hashing_password = hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
+Argon2id is memory-hard: every guess costs tens of megabytes of RAM, which
+makes GPU/ASIC brute force far more expensive than with a fast hash such as
+SHA-256. The salt is generated per hash and embedded in the encoded string,
+so it does not need its own column.
+"""
 
-    return salt.hex() ,hashing_password
-""""FUNCION QUE VERIRICA EL HASH"""
-def hash_verify(password, salt):
-    # Convertir el salt a bytes si está en formato hexadecimal
-    if isinstance(salt, str):  # Verifica si es string
-        salt = bytes.fromhex(salt)  # Lo convierte a bytes
-    
-    # Realiza la concatenación con ambos objetos en formato bytes
-    hash_password = hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
-    return hash_password
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError
+
+# argon2-cffi defaults follow the RFC 9106 low-memory profile.
+_hasher = PasswordHasher()
+
+
+def hash_password(password: str) -> str:
+    return _hasher.hash(password)
+
+
+def verify_password(stored_hash: str, password: str) -> bool:
+    """Constant-time check of ``password`` against ``stored_hash``."""
+    try:
+        return _hasher.verify(stored_hash, password)
+    except (VerificationError, InvalidHashError):
+        return False
+
+
+def needs_rehash(stored_hash: str) -> bool:
+    """True when the hash was made with weaker parameters than the current ones."""
+    return _hasher.check_needs_rehash(stored_hash)

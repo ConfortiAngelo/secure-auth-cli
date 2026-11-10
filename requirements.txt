@@ -1,6 +1,1 @@
-# Dependencias del proyecto
-hashlib
-sqlite3
-os
-random
-string
+argon2-cffi>=23.1
