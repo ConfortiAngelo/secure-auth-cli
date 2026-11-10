@@ -1,11 +1,11 @@
-# Ignorar archivos de base de datos
+# Databases (contain password hashes)
 *.db
 
-# Ignorar archivos de caché
+# Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
 
-# Ignorar entornos virtuales
+# Virtual environments
 venv/
-
-
+.venv/
