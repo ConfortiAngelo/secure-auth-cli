@@ -1,5 +1,7 @@
 # secure-auth-cli
 
+[![tests](https://github.com/ConfortiAngelo/secure-auth-cli/actions/workflows/tests.yml/badge.svg)](https://github.com/ConfortiAngelo/secure-auth-cli/actions/workflows/tests.yml)
+
 A small Python CLI that registers and authenticates users, rebuilt after a security review of my own first version (2024), which had SQL injection, fast password hashing and a predictable password generator.
 
 > Originally published as `Password-Manager`. It never stored third-party passwords; it is a user registration and login system, so it was renamed.
