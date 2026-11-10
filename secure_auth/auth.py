@@ -1,53 +1,45 @@
-from storage import *
-from password_generator import * 
-from security import *
+"""Registration and authentication logic, independent of the CLI."""
+
+import re
+from functools import cache
+
+from .security import hash_password, needs_rehash, verify_password
+from .storage import UserStore
+
+MIN_PASSWORD_LENGTH = 16
+USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 
 
-"""Funcion para logear un usuario"""
-#Esta funcion pide usuario y contraseña, Luego busca al "usuario" en la BD,en caso de que no se encuentre en la BD  retorna un comentario.
-#Caso contrario,  procede a comparar el valor del hash y del salt con el de la BD , esto lo hace llamando a una funcion que a la password ingresada le aplica el salt, y veririca si coincide el hash.
-#En caso de que la contraseña no coincida, le permite ingresar un maximo de 2 veces mas, si en ninguna coincide, diniega el acceso no permitiendo hacer ataques de fuerza bruta
+class RegistrationError(ValueError):
+    """Raised when a new account cannot be created."""
 
-def login():
-    usuario = str(input("Ingrese su usuario: "))
-    password = str(input("Ingrese su contraseña: "))
-    data = query_name(usuario)
-    intentos = 0
-    if len(data) > 0:
-        run = True
-        while run:
-            if intentos <= 2:
-                if data[0][1] == hash_verify(password,data[0][2]):
-                    intentos = 2
-                    return "Acceso permitido"
-                elif data[0][1] != hash_password(password,data[0][2]) and intentos < 2:
-                    print("Contraseña incorrecta!!, Vuelva a intentar")
-                    password = str(input("Ingrese su contraseña: "))
-                intentos += 1
-            else:
-                run = False
-                return "Acceso denegado, Limite de intentos superado!!"
-    else:
-        return "Usuario no registrado"
 
-""""FUNCION REGISTER"""
-#Esta funcion pide usuario, verifica que el usuario no exista en la BD, en caso de que exista pide volver a intentar con otro usuario.
-#En caso de que no exista, pide una contraseña, verifica que cumpla la condicion de que tenga mas de 16 caracteres, en caso de que no cumpla pide volver a intentar. Si cumple la condicion pide que repita la contraseña
-#Si las contraseñas coinciden , registra al usuario exitosamente, en caso contrario  pide volver a intentar
-def register():
-    usuario = str(input('Ingrese un nombre de usuario: '))
-    name = query_name(usuario)
-    if len(name) == 0:
-        password = str(input("Ingrese una contraseña: "))
-        if len(password) >= 16:
-            repetir_password = str(input("Repita la contraseña: "))
-        else:
-            return "La contraseña es demaciado corta, vuelva a intentar!!"
-        if password == repetir_password:
-            salt , hash = hash_password(password)
-            insert_user([(usuario,hash,salt)])
-            return "Usuario registrado"
-        else:
-            return "Las contraseñas no coinciden, vuelva a intentar"
-    else:
-        return "El usuario ya existe!"
+@cache
+def _dummy_hash() -> str:
+    return hash_password("dummy-password-for-timing")
+
+
+def register(store: UserStore, username: str, password: str) -> None:
+    if not USERNAME_PATTERN.fullmatch(username):
+        raise RegistrationError("Username must be 3-32 characters: letters, digits, _ . -")
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise RegistrationError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    if not store.add_user(username, hash_password(password)):
+        raise RegistrationError("Username already exists")
+
+
+def authenticate(store: UserStore, username: str, password: str) -> bool:
+    """Return True only if the user exists and the password matches.
+
+    Unknown users still pay the cost of one Argon2 verification, so response
+    time does not reveal which usernames exist (user enumeration).
+    """
+    stored_hash = store.get_password_hash(username)
+    if stored_hash is None:
+        verify_password(_dummy_hash(), password)
+        return False
+    if not verify_password(stored_hash, password):
+        return False
+    if needs_rehash(stored_hash):
+        store.update_password_hash(username, hash_password(password))
+    return True

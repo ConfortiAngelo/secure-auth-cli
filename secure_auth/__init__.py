@@ -1,3 +1,3 @@
-# __init__.py
+"""secure_auth: a small CLI that registers and authenticates users safely."""
 
-# Puedes inicializar variables o configuraciones aquí, si es necesario.
+__version__ = "2.0.0"
