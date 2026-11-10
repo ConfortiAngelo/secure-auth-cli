@@ -1,22 +1,21 @@
-import random 
+"""Random password generation using a cryptographically secure source."""
+
+import secrets
 import string
 
-
-"""Funcion que me genera contraseñas seguras"""
-def passoword_generator(lenght = 16 ,special_characters = True):
-    if lenght >= 16:
-        #ascii_letters me genera todas las letras mayusculas y minusculas
-        #digits me genera todos los numeros del 0 - 9
-        chars = string.ascii_letters + string.digits
-        if special_characters:
-            #punctuation me genera todos los simbolos especiales
-            chars += string.punctuation        
-        #join me une todos los elementos a una lista, .choice me selecciona elementos de "chars" , mi for repite esto dependiendo de mi lenght
-        password = ''.join(random.choice(chars) for _ in range(lenght))
-        return password
-    else:
-        return "La longitud de la contraseña debe de ser mayor o igual a 16"
+MIN_LENGTH = 16
 
 
+def generate_password(length: int = MIN_LENGTH, special_characters: bool = True) -> str:
+    """Return a random password of ``length`` characters.
 
-
+    Uses :mod:`secrets` (OS CSPRNG). The :mod:`random` module is a Mersenne
+    Twister: fast and fine for simulations, but its output can be predicted
+    after observing enough values, so it must never be used for secrets.
+    """
+    if length < MIN_LENGTH:
+        raise ValueError(f"Password length must be at least {MIN_LENGTH}")
+    alphabet = string.ascii_letters + string.digits
+    if special_characters:
+        alphabet += string.punctuation
+    return "".join(secrets.choice(alphabet) for _ in range(length))
